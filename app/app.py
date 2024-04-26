@@ -126,6 +126,7 @@ def button_event():
 async def main():
     async with BleakClient(device_address) as client:
         global bt_inicio_pressed
+        print("Client created")
         service_movimiento = client.services.get_service(UUID_SERVICE)
         characteristic_procesar = service_movimiento.get_characteristic(UUID_PROCESAR)
         characteristic_max_angulo = service_movimiento.get_characteristic(UUID_MAX_ANGULO)
@@ -134,14 +135,17 @@ async def main():
         characteristic_estado = service_movimiento.get_characteristic(UUID_ESTADO)
         characteristic_tiempo_subida = service_movimiento.get_characteristic(UUID_TIEMPO_SUBIDA)
         characteristic_tiempo_alto = service_movimiento.get_characteristic(UUID_TIEMPO_ALTO)
+        print("Starting notify")
         await client.start_notify(characteristic_max_angulo, characteristic_callback)
         await client.start_notify(characteristic_min_angulo, characteristic_callback)
         await client.start_notify(characteristic_angulo, characteristic_callback)
         await client.start_notify(characteristic_estado, characteristic_callback)
         await client.start_notify(characteristic_tiempo_subida, characteristic_callback)
         await client.start_notify(characteristic_tiempo_alto, characteristic_callback)
-        # await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
+        print("End notify")
 
+        # await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
+    
         while True:
             root.update()
             if bt_inicio_pressed:
