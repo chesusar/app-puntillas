@@ -163,15 +163,15 @@ async def main():
         print("End notify")
 
         # await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
-    
-    # global bt_inicio_pressed
         while True:
             root.update()
-            if bt_inicio_pressed and device_connected:
+            if bt_inicio_pressed:
                 if state == ST_IDLE:
                     await client.write_gatt_char(characteristic_procesar, FLAG_OFF, response=True)
+                    print("Parar")
                 elif device_connected:
                     await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
+                    print("EMPEZAR")
                 bt_inicio_pressed = False
             await asyncio.sleep(0.01)
 
