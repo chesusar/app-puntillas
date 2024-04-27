@@ -27,6 +27,7 @@ bt_inicio = None
 bar_angulo = None
 bar_angulo_max = None
 bar_angulo_min = None
+bar_angulo_prom = None
 frame_bar = None
 image_max = None
 icon_max = None
@@ -38,6 +39,17 @@ lbl_tiempo_subida = None
 lbl_tiempo_subida_tiempo = None
 lbl_tiempo_arriba = None
 lbl_tiempo_arriba_tiempo = None
+frame_gris = None
+
+# Colores
+COLOR_BACKGROUND_IDLE = "#12303B"
+COLOR_SECUNDARY_IDLE = "#265C6D"
+COLOR_ACCENT_IDLE = "#007EA8"
+COLOR_ACCENT_2_IDLE = "#35B5DF"
+COLOR_BACKGROUND_RUN = "#543808"
+COLOR_SECUNDARY_RUN = "#C29547"
+COLOR_ACCENT_RUN = "#EEB044"
+COLOR_ACCENT_2_RUN = "#F1C67D"
 
 # Estado
 ST_IDLE = 0
@@ -112,20 +124,27 @@ def characteristic_callback(char : BleakGATTCharacteristic, data : bytearray):
 def button_event():
     global state
     global bt_inicio_pressed
+    # if not device_connected:
+    #     return
     if state == ST_IDLE:
-        bt_inicio.configure(text="Parar", fg_color="#eeb044", hover_color="#eac88c")
-        root.configure(fg_color="#543808")
+        bt_inicio.configure(text="Reiniciar", fg_color=COLOR_ACCENT_RUN, hover_color=COLOR_ACCENT_2_RUN)
+        frame_gris.configure(fg_color=COLOR_SECUNDARY_RUN)
+        root.configure(fg_color=COLOR_BACKGROUND_RUN)
         state = ST_RUNNING
     else:
-        bt_inicio.configure(text="Iniciar", fg_color="#007ea8", hover_color="#6f99a7")
-        root.configure(fg_color="#12303B")
+        bt_inicio.configure(text="Iniciar", fg_color=COLOR_ACCENT_IDLE, hover_color=COLOR_ACCENT_2_IDLE)
+        frame_gris.configure(fg_color=COLOR_SECUNDARY_IDLE)
+        root.configure(fg_color=COLOR_BACKGROUND_IDLE)
         state = ST_IDLE
     bt_inicio_pressed = True
 
 
 async def main():
+    global device_connected
     async with BleakClient(device_address) as client:
         global bt_inicio_pressed
+        device_connected = True
+        print("Client created")
         service_movimiento = client.services.get_service(UUID_SERVICE)
         characteristic_procesar = service_movimiento.get_characteristic(UUID_PROCESAR)
         characteristic_max_angulo = service_movimiento.get_characteristic(UUID_MAX_ANGULO)
@@ -134,21 +153,25 @@ async def main():
         characteristic_estado = service_movimiento.get_characteristic(UUID_ESTADO)
         characteristic_tiempo_subida = service_movimiento.get_characteristic(UUID_TIEMPO_SUBIDA)
         characteristic_tiempo_alto = service_movimiento.get_characteristic(UUID_TIEMPO_ALTO)
+        print("Starting notify")
         await client.start_notify(characteristic_max_angulo, characteristic_callback)
         await client.start_notify(characteristic_min_angulo, characteristic_callback)
         await client.start_notify(characteristic_angulo, characteristic_callback)
         await client.start_notify(characteristic_estado, characteristic_callback)
         await client.start_notify(characteristic_tiempo_subida, characteristic_callback)
         await client.start_notify(characteristic_tiempo_alto, characteristic_callback)
-        # await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
+        print("End notify")
 
+        # await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
         while True:
             root.update()
             if bt_inicio_pressed:
                 if state == ST_IDLE:
                     await client.write_gatt_char(characteristic_procesar, FLAG_OFF, response=True)
-                else:
+                    print("Parar")
+                elif device_connected:
                     await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
+                    print("EMPEZAR")
                 bt_inicio_pressed = False
             await asyncio.sleep(0.01)
 
@@ -156,8 +179,8 @@ async def main():
 
 
 customtkinter.set_appearance_mode("dark")
-root = customtkinter.CTk("#12303B")
-root.title("PuntillasApp")
+root = customtkinter.CTk(COLOR_BACKGROUND_IDLE)
+root.title("Na Punta Dos Pes APP")
 root.geometry("450x800")
 
 font_default = customtkinter.CTkFont(family="", size=16)
@@ -167,13 +190,15 @@ font_default = customtkinter.CTkFont(family="", size=16)
 # image_background.place_configure(anchor=CENTER, x=0, y=0)
 
 frame_bar = customtkinter.CTkFrame(master=root, height=500, fg_color="transparent")
-frame_bar.place_configure(anchor=N, relx=0.5, rely=0.2)
+frame_bar.place_configure(anchor=N, relx=0.5, rely=0.15)
 
 
 bar_angulo_min = customtkinter.CTkProgressBar(master=frame_bar, orientation="vertical", width=26, height=260)
 bar_angulo_min.pack(side=LEFT, padx=4)
 bar_angulo_max = customtkinter.CTkProgressBar(master=frame_bar, orientation="vertical", width=26, height=260)
 bar_angulo_max.pack(side=LEFT, padx=4)
+bar_angulo_prom = customtkinter.CTkProgressBar(master=frame_bar, orientation="vertical", width=26, height=260)
+bar_angulo_prom.pack(side=LEFT, padx=4)
 bar_angulo = customtkinter.CTkProgressBar(master=frame_bar, orientation="vertical", width=26, height=260)
 bar_angulo.pack(side=LEFT, padx=4)
 
@@ -188,15 +213,20 @@ icon_min = customtkinter.CTkLabel(bar_angulo_min, corner_radius=10, image=image_
 icon_min.place_configure(anchor=CENTER, relx=0.5, rely=0.5)
 
 bt_inicio = customtkinter.CTkButton(master=root, text="Iniciar", command=lambda: button_event(),
-                                    width=180, height=36, corner_radius=18, font=font_default)
+                                    width=180, height=36, corner_radius=18, font=font_default,
+                                    fg_color=COLOR_ACCENT_IDLE)
 bt_inicio.place_configure(anchor=S, relx=0.5, rely=0.95)
 
 lbl_estado_sensor = customtkinter.CTkLabel(master=root, text=ESTADOS_SENSOR[0], text_color="white",
                                            font=font_default, fg_color="transparent")
 lbl_estado_sensor.place_configure(anchor=N, relx=0.5, y=48)
 
-frame_table = customtkinter.CTkFrame(master=root, height=500, fg_color="transparent")
-frame_table.place_configure(anchor=S, relx=0.5, rely=0.7)
+frame_gris = customtkinter.CTkFrame(master=root, height=100, width=200, fg_color=COLOR_SECUNDARY_IDLE, corner_radius=16)
+frame_gris.place_configure(anchor=S, relx=0.5, rely=0.82)
+
+frame_table = customtkinter.CTkFrame(master=frame_gris, height=500, fg_color="transparent")
+frame_table.grid(row=0, column=0, padx=40, pady=40)
+# # frame_table.place_configure(anchor=S, relx=0.5, rely=0.7)
 
 lbl_tiempo_subida = customtkinter.CTkLabel(frame_table, text="Tiempo de subida", font=font_default)
 lbl_tiempo_subida.grid(column=0, columnspan=6, row=0, rowspan=1, sticky="W", padx=(0, 32))
