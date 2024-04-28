@@ -22,32 +22,41 @@ device_connected = False
 # UI Components
 root = None
 font_default = None
-image_background = None
+
+lbl_estado_sensor = None
 bt_inicio = None
+
+frame_bar = None
+frame_bar_int = None
+frame_bar_letra = None
+frame_bar_barras = None
 bar_angulo = None
 bar_angulo_max = None
 bar_angulo_min = None
 bar_angulo_prom = None
-frame_bar = None
 image_max = None
 icon_max = None
 image_min = None
 icon_min = None
-lbl_estado_sensor = None
-frame_table = None
+lbl_angulo = None
+lbl_angulo_max = None
+lbl_angulo_min = None
+lbl_angulo_prom = None
+
+frame_tiempos = None
+frame_tiempos_int = None
 lbl_tiempo_subida = None
 lbl_tiempo_subida_tiempo = None
 lbl_tiempo_arriba = None
 lbl_tiempo_arriba_tiempo = None
-frame_gris = None
 
 # Colores
 COLOR_BACKGROUND_IDLE = "#12303B"
-COLOR_SECUNDARY_IDLE = "#265C6D"
+COLOR_SECONDARY_IDLE = "#265C6D"
 COLOR_ACCENT_IDLE = "#007EA8"
 COLOR_ACCENT_2_IDLE = "#35B5DF"
 COLOR_BACKGROUND_RUN = "#543808"
-COLOR_SECUNDARY_RUN = "#C29547"
+COLOR_SECONDARY_RUN = "#C29547"
 COLOR_ACCENT_RUN = "#EEB044"
 COLOR_ACCENT_2_RUN = "#F1C67D"
 
@@ -101,18 +110,24 @@ def characteristic_callback(char : BleakGATTCharacteristic, data : bytearray):
         angulo = int.from_bytes(bytes=data, byteorder='little', signed=True)
         bar_angulo.set(angulo/90.0)
         bar_angulo.configure(progress_color=hsl_to_hex(angulo, 72, 53), fg_color=hsl_to_hex(angulo, 15, 30))
+        lbl_angulo.configure(text=str(int.from_bytes(bytes=data, byteorder='little', signed=True))+"º")
+        lbl_angulo.configure(text_color=hsl_to_hex(angulo, 72, 53))
     elif char.uuid == UUID_MAX_ANGULO:
         angulo = int.from_bytes(bytes=data, byteorder='little', signed=True)
         bar_angulo_max.set(angulo/90.0)
         bar_angulo_max.configure(progress_color=hsl_to_hex(angulo, 72, 53), fg_color=hsl_to_hex(angulo, 15, 30))
         icon_max.place_configure(anchor=CENTER, relx=0.5, y=(130-angulo/90.0*240))
         icon_max.configure(fg_color=hsl_to_hex(angulo, 72, 53))
+        lbl_angulo_max.configure(text=str(int.from_bytes(bytes=data, byteorder='little', signed=True))+"º")
+        lbl_angulo_max.configure(text_color=hsl_to_hex(angulo, 72, 53))
     elif char.uuid == UUID_MIN_ANGULO:
         angulo = int.from_bytes(bytes=data, byteorder='little', signed=True)
         bar_angulo_min.set(angulo/90.0)
         bar_angulo_min.configure(progress_color=hsl_to_hex(angulo, 72, 53), fg_color=hsl_to_hex(angulo, 15, 30))
         icon_min.place_configure(anchor=CENTER, relx=0.5, y=(130-angulo/90.0*240))
         icon_min.configure(fg_color=hsl_to_hex(angulo, 72, 53))
+        lbl_angulo_min.configure(text=str(int.from_bytes(bytes=data, byteorder='little', signed=True))+"º")
+        lbl_angulo_min.configure(text_color=hsl_to_hex(angulo, 72, 53))
     elif char.uuid == UUID_ESTADO:
         lbl_estado_sensor.configure(text=ESTADOS_SENSOR[int.from_bytes(bytes=data, byteorder='little', signed=True)])
     elif char.uuid == UUID_TIEMPO_ALTO:
@@ -128,12 +143,14 @@ def button_event():
     #     return
     if state == ST_IDLE:
         bt_inicio.configure(text="Reiniciar", fg_color=COLOR_ACCENT_RUN, hover_color=COLOR_ACCENT_2_RUN)
-        frame_gris.configure(fg_color=COLOR_SECUNDARY_RUN)
+        frame_tiempos.configure(fg_color=COLOR_SECONDARY_RUN)
+        # frame_bar.configure(fg_color=COLOR_SECONDARY_RUN)
         root.configure(fg_color=COLOR_BACKGROUND_RUN)
         state = ST_RUNNING
     else:
         bt_inicio.configure(text="Iniciar", fg_color=COLOR_ACCENT_IDLE, hover_color=COLOR_ACCENT_2_IDLE)
-        frame_gris.configure(fg_color=COLOR_SECUNDARY_IDLE)
+        frame_tiempos.configure(fg_color=COLOR_SECONDARY_IDLE)
+        # frame_bar.configure(fg_color=COLOR_SECONDARY_IDLE)
         root.configure(fg_color=COLOR_BACKGROUND_IDLE)
         state = ST_IDLE
     bt_inicio_pressed = True
@@ -141,39 +158,41 @@ def button_event():
 
 async def main():
     global device_connected
-    async with BleakClient(device_address) as client:
-        global bt_inicio_pressed
-        device_connected = True
-        print("Client created")
-        service_movimiento = client.services.get_service(UUID_SERVICE)
-        characteristic_procesar = service_movimiento.get_characteristic(UUID_PROCESAR)
-        characteristic_max_angulo = service_movimiento.get_characteristic(UUID_MAX_ANGULO)
-        characteristic_min_angulo = service_movimiento.get_characteristic(UUID_MIN_ANGULO)
-        characteristic_angulo = service_movimiento.get_characteristic(UUID_ANGULO)
-        characteristic_estado = service_movimiento.get_characteristic(UUID_ESTADO)
-        characteristic_tiempo_subida = service_movimiento.get_characteristic(UUID_TIEMPO_SUBIDA)
-        characteristic_tiempo_alto = service_movimiento.get_characteristic(UUID_TIEMPO_ALTO)
-        print("Starting notify")
-        await client.start_notify(characteristic_max_angulo, characteristic_callback)
-        await client.start_notify(characteristic_min_angulo, characteristic_callback)
-        await client.start_notify(characteristic_angulo, characteristic_callback)
-        await client.start_notify(characteristic_estado, characteristic_callback)
-        await client.start_notify(characteristic_tiempo_subida, characteristic_callback)
-        await client.start_notify(characteristic_tiempo_alto, characteristic_callback)
-        print("End notify")
+    global bt_inicio_pressed
+    # async with BleakClient(device_address) as client:
+    #     global bt_inicio_pressed
+    #     device_connected = True
+    #     print("Client created")
+    #     service_movimiento = client.services.get_service(UUID_SERVICE)
+    #     characteristic_procesar = service_movimiento.get_characteristic(UUID_PROCESAR)
+    #     characteristic_max_angulo = service_movimiento.get_characteristic(UUID_MAX_ANGULO)
+    #     characteristic_min_angulo = service_movimiento.get_characteristic(UUID_MIN_ANGULO)
+    #     characteristic_angulo = service_movimiento.get_characteristic(UUID_ANGULO)
+    #     characteristic_estado = service_movimiento.get_characteristic(UUID_ESTADO)
+    #     characteristic_tiempo_subida = service_movimiento.get_characteristic(UUID_TIEMPO_SUBIDA)
+    #     characteristic_tiempo_alto = service_movimiento.get_characteristic(UUID_TIEMPO_ALTO)
+    #     print("Starting notify")
+    #     await client.start_notify(characteristic_max_angulo, characteristic_callback)
+    #     await client.start_notify(characteristic_min_angulo, characteristic_callback)
+    #     await client.start_notify(characteristic_angulo, characteristic_callback)
+    #     await client.start_notify(characteristic_estado, characteristic_callback)
+    #     await client.start_notify(characteristic_tiempo_subida, characteristic_callback)
+    #     await client.start_notify(characteristic_tiempo_alto, characteristic_callback)
+    #     print("End notify")
 
         # await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
-        while True:
-            root.update()
-            if bt_inicio_pressed:
-                if state == ST_IDLE:
-                    await client.write_gatt_char(characteristic_procesar, FLAG_OFF, response=True)
-                    print("Parar")
-                elif device_connected:
-                    await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
-                    print("EMPEZAR")
-                bt_inicio_pressed = False
-            await asyncio.sleep(0.01)
+
+    while True:
+        root.update()
+        if bt_inicio_pressed:
+            if state == ST_IDLE:
+                await client.write_gatt_char(characteristic_procesar, FLAG_OFF, response=True)
+                print("Parar")
+            elif device_connected:
+                await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
+                print("EMPEZAR")
+            bt_inicio_pressed = False
+        await asyncio.sleep(0.01)
 
     print("Finalizado")
 
@@ -184,23 +203,41 @@ root.title("Na Punta Dos Pes APP")
 root.geometry("450x800")
 
 font_default = customtkinter.CTkFont(family="", size=16)
+font_small = customtkinter.CTkFont(family="", size=12)
+font_big = customtkinter.CTkFont(family="", size=22)
 
-# image_background = customtkinter.CTkLabel(root, image=customtkinter.CTkImage(Image.open("background.png"), size=(900,1600)), text="",
-#                                   fg_color="transparent")
-# image_background.place_configure(anchor=CENTER, x=0, y=0)
+# Frame Barras
+FRAME_BAR_WIDTH = 386
+FRAME_BAR_HEIGHT = 300
+FRAME_PADDING = 24
+FRAME_CORNER = 24
 
-frame_bar = customtkinter.CTkFrame(master=root, height=500, fg_color="transparent")
+frame_bar = customtkinter.CTkFrame(master=root, width=FRAME_BAR_WIDTH, height=FRAME_BAR_HEIGHT,
+                                   fg_color=COLOR_SECONDARY_IDLE, corner_radius=FRAME_CORNER)
 frame_bar.place_configure(anchor=N, relx=0.5, rely=0.15)
 
+frame_bar_int = customtkinter.CTkFrame(master=frame_bar, width=FRAME_BAR_WIDTH - FRAME_PADDING*2,
+                                       height=FRAME_BAR_HEIGHT- FRAME_PADDING*2, fg_color="transparent")
+frame_bar_int.place_configure(anchor=CENTER, relx=0.5, rely=0.5)
 
-bar_angulo_min = customtkinter.CTkProgressBar(master=frame_bar, orientation="vertical", width=26, height=260)
-bar_angulo_min.pack(side=LEFT, padx=4)
-bar_angulo_max = customtkinter.CTkProgressBar(master=frame_bar, orientation="vertical", width=26, height=260)
-bar_angulo_max.pack(side=LEFT, padx=4)
-bar_angulo_prom = customtkinter.CTkProgressBar(master=frame_bar, orientation="vertical", width=26, height=260)
-bar_angulo_prom.pack(side=LEFT, padx=4)
-bar_angulo = customtkinter.CTkProgressBar(master=frame_bar, orientation="vertical", width=26, height=260)
-bar_angulo.pack(side=LEFT, padx=4)
+frame_bar_barras = customtkinter.CTkFrame(master=frame_bar_int, width=(FRAME_BAR_WIDTH - FRAME_PADDING*2)/2,
+                                       height=FRAME_BAR_HEIGHT- FRAME_PADDING*2, fg_color="transparent")
+frame_bar_barras.pack(side=RIGHT, expand=True, fill=BOTH)
+frame_bar_barras.pack_propagate(False)
+
+frame_bar_letra = customtkinter.CTkFrame(master=frame_bar_int,  width=(FRAME_BAR_WIDTH - FRAME_PADDING*2)/2,
+                                       height=FRAME_BAR_HEIGHT- FRAME_PADDING*2, fg_color="transparent")
+frame_bar_letra.pack(side=LEFT, expand=True, fill=BOTH)
+frame_bar_letra.grid_propagate(False)
+
+bar_angulo = customtkinter.CTkProgressBar(master=frame_bar_barras, orientation="vertical", width=26, height=FRAME_BAR_HEIGHT- FRAME_PADDING*2)
+bar_angulo.pack(side=RIGHT, padx=4)
+bar_angulo_prom = customtkinter.CTkProgressBar(master=frame_bar_barras, orientation="vertical", width=26, height=FRAME_BAR_HEIGHT- FRAME_PADDING*2)
+bar_angulo_prom.pack(side=RIGHT, padx=4)
+bar_angulo_max = customtkinter.CTkProgressBar(master=frame_bar_barras, orientation="vertical", width=26, height=FRAME_BAR_HEIGHT- FRAME_PADDING*2)
+bar_angulo_max.pack(side=RIGHT, padx=4)
+bar_angulo_min = customtkinter.CTkProgressBar(master=frame_bar_barras, orientation="vertical", width=26, height=FRAME_BAR_HEIGHT- FRAME_PADDING*2)
+bar_angulo_min.pack(side=RIGHT, padx=4)
 
 image_max = customtkinter.CTkImage(Image.open("icon_max_white.png"), size=(24,24))
 icon_max = customtkinter.CTkLabel(bar_angulo_max, corner_radius=10, image=image_max, text="",
@@ -212,6 +249,44 @@ icon_min = customtkinter.CTkLabel(bar_angulo_min, corner_radius=10, image=image_
                                   fg_color="transparent")
 icon_min.place_configure(anchor=CENTER, relx=0.5, rely=0.5)
 
+lbl_angulo_title =  customtkinter.CTkLabel(frame_bar_letra, text="Ángulo", font=font_small)
+lbl_angulo_title.grid(column=0, columnspan=1, row=0, rowspan=1, sticky="W")
+lbl_angulo = customtkinter.CTkLabel(frame_bar_letra, text="32", font=font_big)
+lbl_angulo.grid(column=0, columnspan=1, row=1, rowspan=1, sticky="W", padx=(16, 0))
+lbl_angulo_max_title =  customtkinter.CTkLabel(frame_bar_letra, text="Ángulo máximo", font=font_small)
+lbl_angulo_max_title.grid(column=0, columnspan=1, row=2, rowspan=1, sticky="W")
+lbl_angulo_max = customtkinter.CTkLabel(frame_bar_letra, text="65", font=font_big)
+lbl_angulo_max.grid(column=0, columnspan=1, row=3, rowspan=1, sticky="W", padx=(16, 0))
+lbl_angulo_prom_title =  customtkinter.CTkLabel(frame_bar_letra, text="Ángulo promedio", font=font_small)
+lbl_angulo_prom_title.grid(column=0, columnspan=1, row=4, rowspan=1, sticky="W")
+lbl_angulo_prom = customtkinter.CTkLabel(frame_bar_letra, text="45", font=font_big)
+lbl_angulo_prom.grid(column=0, columnspan=1, row=5, rowspan=1, sticky="W", padx=(16, 0))
+lbl_angulo_min_title =  customtkinter.CTkLabel(frame_bar_letra, text="Ángulo mínimo", font=font_small)
+lbl_angulo_min_title.grid(column=0, columnspan=1, row=6, rowspan=1, sticky="W")
+lbl_angulo_min = customtkinter.CTkLabel(frame_bar_letra, text="25", font=font_big)
+lbl_angulo_min.grid(column=0, columnspan=1, row=7, rowspan=1, sticky="W", padx=(16, 0))
+
+# Frame tiempos
+
+FRAME_TIEMPOS_HEIGHT = 160
+
+frame_tiempos = customtkinter.CTkFrame(master=root, width=FRAME_BAR_WIDTH, fg_color=COLOR_SECONDARY_IDLE, height=FRAME_TIEMPOS_HEIGHT, corner_radius=FRAME_CORNER)
+frame_tiempos.place_configure(anchor=S, relx=0.5, rely=0.82)
+
+frame_tiempos_int = customtkinter.CTkFrame(master=frame_tiempos, width=FRAME_BAR_WIDTH-FRAME_PADDING*2, height=FRAME_TIEMPOS_HEIGHT-FRAME_PADDING*2, fg_color="transparent")
+frame_tiempos_int.place_configure(anchor=CENTER, relx=0.5, rely=0.5)
+frame_tiempos_int.grid_propagate(False)
+
+lbl_tiempo_subida = customtkinter.CTkLabel(frame_tiempos_int, text="Tiempo de subida", font=font_default)
+lbl_tiempo_subida.grid(column=0, columnspan=1, row=0, rowspan=1, sticky="W", padx=(0, 0))
+lbl_tiempo_subida_tiempo = customtkinter.CTkLabel(frame_tiempos_int, text="--", font=font_default)
+lbl_tiempo_subida_tiempo.grid(column=1, columnspan=1, row=0, rowspan=1, sticky="E", padx=(0, 0))
+
+lbl_tiempo_arriba = customtkinter.CTkLabel(frame_tiempos_int, text="Tiempo de puntillas", font=font_default)
+lbl_tiempo_arriba.grid(column=0, columnspan=1, row=1, rowspan=1, sticky="W", padx=(0, 0))
+lbl_tiempo_arriba_tiempo = customtkinter.CTkLabel(frame_tiempos_int, text="--", font=font_default)
+lbl_tiempo_arriba_tiempo.grid(column=1, columnspan=1, row=1, rowspan=1, sticky="E", padx=(0, 0))
+
 bt_inicio = customtkinter.CTkButton(master=root, text="Iniciar", command=lambda: button_event(),
                                     width=180, height=36, corner_radius=18, font=font_default,
                                     fg_color=COLOR_ACCENT_IDLE)
@@ -220,22 +295,5 @@ bt_inicio.place_configure(anchor=S, relx=0.5, rely=0.95)
 lbl_estado_sensor = customtkinter.CTkLabel(master=root, text=ESTADOS_SENSOR[0], text_color="white",
                                            font=font_default, fg_color="transparent")
 lbl_estado_sensor.place_configure(anchor=N, relx=0.5, y=48)
-
-frame_gris = customtkinter.CTkFrame(master=root, height=100, width=200, fg_color=COLOR_SECUNDARY_IDLE, corner_radius=16)
-frame_gris.place_configure(anchor=S, relx=0.5, rely=0.82)
-
-frame_table = customtkinter.CTkFrame(master=frame_gris, height=500, fg_color="transparent")
-frame_table.grid(row=0, column=0, padx=40, pady=40)
-# # frame_table.place_configure(anchor=S, relx=0.5, rely=0.7)
-
-lbl_tiempo_subida = customtkinter.CTkLabel(frame_table, text="Tiempo de subida", font=font_default)
-lbl_tiempo_subida.grid(column=0, columnspan=6, row=0, rowspan=1, sticky="W", padx=(0, 32))
-lbl_tiempo_subida_tiempo = customtkinter.CTkLabel(frame_table, text="--", font=font_default)
-lbl_tiempo_subida_tiempo.grid(column=6, columnspan=2, row=0, rowspan=1, sticky="E", padx=(32, 0))
-
-lbl_tiempo_arriba = customtkinter.CTkLabel(frame_table, text="Tiempo de puntillas", font=font_default)
-lbl_tiempo_arriba.grid(column=0, columnspan=6, row=1, rowspan=1, sticky="W", padx=(0, 32))
-lbl_tiempo_arriba_tiempo = customtkinter.CTkLabel(frame_table, text="--", font=font_default)
-lbl_tiempo_arriba_tiempo.grid(column=6, columnspan=2, row=1, rowspan=1, sticky="E", padx=(32, 0))
 
 asyncio.run(main())
