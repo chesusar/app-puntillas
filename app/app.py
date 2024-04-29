@@ -65,6 +65,7 @@ ST_IDLE = 0
 ST_RUNNING = 1
 state = ST_IDLE
 bt_inicio_pressed = False
+app_running = True
 
 # Estado sensor
 ESTADOS_SENSOR = ["Desconectado", "Parado", "Subiendo", "Arriba", "Bajando"]
@@ -156,6 +157,11 @@ def button_event():
     bt_inicio_pressed = True
 
 
+def close_app():
+    global app_running
+    app_running = False
+
+
 async def main():
     global device_connected
     global bt_inicio_pressed
@@ -182,8 +188,9 @@ async def main():
 
         # await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
 
-    while True:
+    while app_running:
         root.update()
+
         if bt_inicio_pressed:
             if state == ST_IDLE:
                 await client.write_gatt_char(characteristic_procesar, FLAG_OFF, response=True)
@@ -194,6 +201,7 @@ async def main():
             bt_inicio_pressed = False
         await asyncio.sleep(0.01)
 
+    root.destroy()
     print("Finalizado")
 
 
@@ -201,6 +209,7 @@ customtkinter.set_appearance_mode("dark")
 root = customtkinter.CTk(COLOR_BACKGROUND_IDLE)
 root.title("Na Punta Dos Pes APP")
 root.geometry("450x800")
+root.protocol("WM_DELETE_WINDOW", close_app)
 
 font_estado = customtkinter.CTkFont(family="", size=25)     # 16 - 30
 font_variable = customtkinter.CTkFont(family="", size=18)   # 12 - 25
