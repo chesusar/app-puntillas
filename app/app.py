@@ -324,4 +324,6 @@ lbl_estado_sensor = customtkinter.CTkLabel(master=root, text=ESTADOS_SENSOR[0], 
                                            font=font_estado, fg_color="transparent")
 lbl_estado_sensor.place_configure(anchor=N, relx=225.0*1.0/450, rely=30.0*1.0/800.0)
 
+customtkinter.deactivate_automatic_dpi_awareness()
+
 asyncio.run(main())
