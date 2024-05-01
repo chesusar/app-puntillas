@@ -67,7 +67,7 @@ ST_RUNNING = 1
 state = ST_IDLE
 bt_inicio_pressed = False
 app_running = True
-FPS = 30
+FPS = 60
 
 # Estado sensor
 ESTADOS_SENSOR = ["Desconectado", "Parado", "Subiendo", "Arriba", "Bajando"]
@@ -127,18 +127,21 @@ def characteristic_callback(char : BleakGATTCharacteristic, data : bytearray):
         lbl_estado_sensor.configure(text=ESTADOS_SENSOR[dato])
         state_sensor = dato
     elif char.uuid == UUID_TIEMPO_ALTO:
-        lbl_tiempo_arriba_tiempo.configure(text=str(int.from_bytes(bytes=data, byteorder='little', signed=True)))
+        lbl_tiempo_arriba_tiempo.configure(text="{:.3f}".format(dato))
     elif char.uuid == UUID_TIEMPO_SUBIDA:
-        lbl_tiempo_subida_tiempo.configure(text=str(int.from_bytes(bytes=data, byteorder='little', signed=True)))
+        lbl_tiempo_subida_tiempo.configure(text="{:.3f}".format(dato))
 
 
-def update_angulo(barra : customtkinter.CTkProgressBar, icono, label, dato):
-    barra.set(dato/90.0)
+def update_angulo(barra : customtkinter.CTkProgressBar, icono, label, dato, smooth=False):
+    dato_smooth = dato/90.0
+    if smooth:
+        dato_smooth = (barra.get() + dato/90.0)/2.0
+    barra.set(dato_smooth)
     barra.configure(progress_color=hsl_to_hex(dato, 72, 53), fg_color=hsl_to_hex(dato, 15, 30))
     label.configure(text=str(dato)+"º")
     label.configure(text_color=hsl_to_hex(dato, 72, 53))
     if icono != None:
-        icono.place_configure(anchor=CENTER, relx=0.5, y=(140-dato/90.0*240))
+        icono.place_configure(anchor=CENTER, relx=0.5, y=(140-dato_smooth*240))
         icono.configure(fg_color=hsl_to_hex(dato, 72, 53))
 
 def button_event():
@@ -166,11 +169,11 @@ def close_app():
     app_running = False
 
 
-def process():
-    update_angulo(bar_angulo, None, lbl_angulo, datos["angulo"])
-    update_angulo(bar_angulo_prom, icon_prom, lbl_angulo_prom, datos["angulo"])
-    update_angulo(bar_angulo_max, icon_max, lbl_angulo_max, datos["angulo_max"])
-    update_angulo(bar_angulo_min, icon_min, lbl_angulo_min, datos["angulo_min"])
+def process(delta):
+    update_angulo(bar_angulo, None, lbl_angulo, datos["angulo"], True)
+    update_angulo(bar_angulo_prom, icon_prom, lbl_angulo_prom, datos["angulo"], True)
+    update_angulo(bar_angulo_max, icon_max, lbl_angulo_max, datos["angulo_max"], True)
+    update_angulo(bar_angulo_min, icon_min, lbl_angulo_min, datos["angulo_min"], True)
 
 
 async def main():
@@ -194,7 +197,7 @@ async def main():
         await client.start_notify(characteristic_tiempo_alto, characteristic_callback)
 
         while app_running:
-            process()
+            process(1.0/FPS)
             root.update()
 
             if bt_inicio_pressed:
