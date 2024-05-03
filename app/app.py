@@ -16,6 +16,7 @@ UUID_MAX_ANGULO = "17cc3d4f-69c7-4e00-a954-0346ecbb22c7"
 UUID_MIN_ANGULO = "6a8adb71-4b3b-421f-b5e1-e74bad969122"
 UUID_ANGULO = "38b48b19-373f-4425-a790-42df14c08300"
 UUID_ESTADO = "c4346fa0-d0ee-4c24-817f-0fab75a7fd23"
+UUID_PROMEDIO = "fdee3592-43f5-40ac-b408-2a15a0b4413c"
 UUID_TIEMPO_SUBIDA = "64247fd3-2d0e-461f-ac13-8651d2ba991e"
 UUID_TIEMPO_ALTO = "ddc902e8-9d9f-4db6-ba57-76609f6d2adb"
 
@@ -85,7 +86,10 @@ datos = {
     "angulo" : 0.0,
     "angulo_prom" : 0.0,
     "angulo_min" : 0.0,
-    "angulo_max" : 0.0
+    "angulo_max" : 0.0,
+    "state_sensor" : 0,
+    "t_subida" : 0,
+    "t_alto" : 0
 }
 
 
@@ -135,13 +139,19 @@ def characteristic_callback(char, data):
          datos["angulo_max"] = dato
     elif char == UUID_MIN_ANGULO:
          datos["angulo_min"] = dato
+    elif char == UUID_PROMEDIO:
+        print("Angulo promedio recibido")
+        datos["angulo_prom"] = dato
     elif char == UUID_ESTADO:
-        lbl_estado_sensor.configure(text=ESTADOS_SENSOR[dato])
-        state_sensor = dato
+        datos["state_sensor"] = dato
+        # lbl_estado_sensor.configure(text=ESTADOS_SENSOR[dato])
+        # state_sensor = dato
     elif char == UUID_TIEMPO_ALTO:
-        lbl_tiempo_arriba_tiempo.configure(text="{:.3f}".format(dato))
+        datos["t_alto"] = dato/10.0
+        # lbl_tiempo_arriba_tiempo.configure(text="{:.3f}".format(dato))
     elif char == UUID_TIEMPO_SUBIDA:
-        lbl_tiempo_subida_tiempo.configure(text="{:.3f}".format(dato))
+        datos["t_subida"] = dato/10.0
+        # lbl_tiempo_subida_tiempo.configure(text="{:.3f}".format(dato))
 
 
 def update_angulo(barra : customtkinter.CTkProgressBar, icono, label, dato, smooth=False):
@@ -191,15 +201,20 @@ def process():
         icon_usb.place_configure(anchor=NE, relx=(450-FRAME_PADDING/2)/450, y=FRAME_PADDING/2)
 
     update_angulo(bar_angulo, None, lbl_angulo, datos["angulo"], True)
-    update_angulo(bar_angulo_prom, icon_prom, lbl_angulo_prom, datos["angulo"], True)
+    update_angulo(bar_angulo_prom, icon_prom, lbl_angulo_prom, datos["angulo_prom"], True)
     update_angulo(bar_angulo_max, icon_max, lbl_angulo_max, datos["angulo_max"], True)
     update_angulo(bar_angulo_min, icon_min, lbl_angulo_min, datos["angulo_min"], True)
+
+    lbl_estado_sensor.configure(text=ESTADOS_SENSOR[datos["state_sensor"]])
+    lbl_tiempo_arriba_tiempo.configure(text="{:.3f}".format(datos["t_alto"]))
+    lbl_tiempo_subida_tiempo.configure(text="{:.3f}".format(datos["t_subida"]))
+
 
 
 def callback(uuid, dato):
     # print("Callback")
-    print(uuid)
-    print(dato)
+    # print(uuid)
+    # print(dato)
     characteristic_callback(uuid, dato)
 
 

@@ -238,10 +238,10 @@ void procesado() {
     if (dAcelX < D_ACEL_THRESHOLD_PARADA && dAcelX > -D_ACEL_THRESHOLD_PARADA) {
       Serial.println("Cambio de estado a arriba");
       parada_subida = millis();
-      tiempo_subida = parada_subida - inicio_subida;
+      tiempo_subida = (parada_subida - inicio_subida)/100;
       Serial.print("Tiempo subida: ");
       Serial.println(tiempo_subida);
-      subidaChar.writeValue(tiempo_subida);
+      subidaChar.writeValue((int)tiempo_subida);
       estadoChar.writeValue((int)ST_ARRIBA);
       estado = ST_ARRIBA;
     }
@@ -282,7 +282,7 @@ void procesado() {
     if (dAcelX < -D_ACEL_THRESHOLD) {
       Serial.println("Cambio de estado a bajando");
       parada_puntillas = millis();
-      tiempo_puntillas = parada_puntillas - inicio_puntillas;
+      tiempo_puntillas = (parada_puntillas - inicio_puntillas)/100;
       Serial.print("tiempo en puntillas: ");
       Serial.println(tiempo_puntillas);
       altoChar.writeValue(tiempo_puntillas);

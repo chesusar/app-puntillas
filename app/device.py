@@ -68,9 +68,9 @@ class NPDPDevice:
 
     def write(self, uuid, dato):
         if self.protocol == self.PROTOCOL_PORT and self.serial.is_open:
-            encoded = uuid + " " + str(dato) + "\n"
-            encoded = encoded.encode()
-            self.serial.write(encoded)
+            # encoded = uuid + " " + str(dato) + "\n"
+            # encoded = dato.encode()
+            self.serial.write(dato)
 
 
 # async def main():
