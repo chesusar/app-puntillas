@@ -6,6 +6,15 @@ from PIL import Image, ImageTk
 from device import NPDPDevice
 import time
 import threading
+from Adafruit_IO import MQTTClient
+
+# MQTT
+ADAFRUIT_IO_KEY = ''
+ADAFRUIT_IO_USERNAME= 'Rarribas'
+client = MQTTClient(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
+client.connect()
+
+client.loop_background()
 
 FLAG_ON = b"\x01"
 FLAG_OFF = b"\x00"
@@ -136,14 +145,20 @@ def characteristic_callback(char, data):
     if char == UUID_ANGULO:
         datos["angulo"] = dato
     elif char == UUID_MAX_ANGULO:
-         datos["angulo_max"] = dato
+        datos["angulo_max"] = dato
     elif char == UUID_MIN_ANGULO:
-         datos["angulo_min"] = dato
+        datos["angulo_min"] = dato
     elif char == UUID_PROMEDIO:
         print("Angulo promedio recibido")
         datos["angulo_prom"] = dato
     elif char == UUID_ESTADO:
         datos["state_sensor"] = dato
+        if dato == 4:
+            client.publish('maximo', datos["angulo_max"])
+            client.publish('promedio', datos["angulo_prom"])
+            client.publish('minimo', datos["angulo_min"])
+            client.publish('tiempo-subida', datos["t_subida"])
+            client.publish('tiempo-puntillas', datos["t_alto"])
         # lbl_estado_sensor.configure(text=ESTADOS_SENSOR[dato])
         # state_sensor = dato
     elif char == UUID_TIEMPO_ALTO:
@@ -152,6 +167,7 @@ def characteristic_callback(char, data):
     elif char == UUID_TIEMPO_SUBIDA:
         datos["t_subida"] = dato/10.0
         # lbl_tiempo_subida_tiempo.configure(text="{:.3f}".format(dato))
+
 
 
 def update_angulo(barra : customtkinter.CTkProgressBar, icono, label, dato, smooth=False):
@@ -259,6 +275,7 @@ async def main():
                 # await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
                 print("EMPEZAR")
             bt_inicio_pressed = False
+
         # print(time.time())
         # await asyncio.sleep(1.0/FPS)
 
