@@ -16,6 +16,8 @@ Este código realiza las siguientes tareas:
 ## Filtro de Kalman
 El filtro de Kalman se utiliza para fusionar las lecturas del acelerómetro y el giroscopio, proporcionando estimaciones más precisas del ángulo y reduciendo el ruido en las mediciones.
 
+[![Alt text](https://img.youtube.com/vi/7HGj-5P9A-U/0.jpg)](https://www.youtube.com/watch?v=7HGj-5P9A-U)
+
 ## Maquina de estados
 <div align="Center">
   <p float="left">
