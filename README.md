@@ -1,5 +1,5 @@
 <div align="Center">
-  <h2 align="Center">Dispositivo IoT de Monitoreo de Equilibrio y Movimiento</h2>
+  <h1 align="Center">Dispositivo IoT de Monitoreo de Equilibrio y Movimiento</h1>
   <p float="left">
   </p>
 </div>
