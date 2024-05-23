@@ -1,5 +1,5 @@
 <div align="Center">
-  <h2 align="Center">Receptor Bluetooth con ESP32</h2>
+  <h1 align="Center">Receptor Bluetooth con ESP32</h1>
   <p float="left">
   </p>
 </div>
