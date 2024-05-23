@@ -3,6 +3,18 @@ from bleak import BleakClient, BleakGATTCharacteristic
 from tkinter import *
 import customtkinter
 from PIL import Image, ImageTk
+from device import NPDPDevice
+import time
+import threading
+from Adafruit_IO import MQTTClient
+
+# MQTT
+ADAFRUIT_IO_KEY = ''
+ADAFRUIT_IO_USERNAME= 'Rarribas'
+client = MQTTClient(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
+client.connect()
+
+client.loop_background()
 
 FLAG_ON = b"\x01"
 FLAG_OFF = b"\x00"
@@ -13,6 +25,7 @@ UUID_MAX_ANGULO = "17cc3d4f-69c7-4e00-a954-0346ecbb22c7"
 UUID_MIN_ANGULO = "6a8adb71-4b3b-421f-b5e1-e74bad969122"
 UUID_ANGULO = "38b48b19-373f-4425-a790-42df14c08300"
 UUID_ESTADO = "c4346fa0-d0ee-4c24-817f-0fab75a7fd23"
+UUID_PROMEDIO = "fdee3592-43f5-40ac-b408-2a15a0b4413c"
 UUID_TIEMPO_SUBIDA = "64247fd3-2d0e-461f-ac13-8651d2ba991e"
 UUID_TIEMPO_ALTO = "ddc902e8-9d9f-4db6-ba57-76609f6d2adb"
 
@@ -44,6 +57,8 @@ lbl_angulo_max = None
 lbl_angulo_min = None
 lbl_angulo_prom = None
 
+icon_usb = None
+
 frame_tiempos = None
 frame_tiempos_int = None
 lbl_tiempo_subida = None
@@ -67,7 +82,10 @@ ST_RUNNING = 1
 state = ST_IDLE
 bt_inicio_pressed = False
 app_running = True
+npdp = None
 FPS = 60
+
+thread_communication = None
 
 # Estado sensor
 ESTADOS_SENSOR = ["Desconectado", "Parado", "Subiendo", "Arriba", "Bajando"]
@@ -77,7 +95,10 @@ datos = {
     "angulo" : 0.0,
     "angulo_prom" : 0.0,
     "angulo_min" : 0.0,
-    "angulo_max" : 0.0
+    "angulo_max" : 0.0,
+    "state_sensor" : 0,
+    "t_subida" : 0,
+    "t_alto" : 0
 }
 
 
@@ -113,23 +134,40 @@ def hsl_to_hex(h, s, l):
     return "#{:02x}{:02x}{:02x}".format(r_hex, g_hex, b_hex)
 
 
-def characteristic_callback(char : BleakGATTCharacteristic, data : bytearray):
+def characteristic_callback(char, data):
     global state_sensor
-    dato = int.from_bytes(bytes=data, byteorder='little', signed=True)
+    try:
+        dato = int(data)
+    except:
+        dato = 0
+    # dato = int.from_bytes(bytes=data, byteorder='little', signed=True)
 
-    if char.uuid == UUID_ANGULO:
+    if char == UUID_ANGULO:
         datos["angulo"] = dato
-    elif char.uuid == UUID_MAX_ANGULO:
-         datos["angulo_max"] = dato
-    elif char.uuid == UUID_MIN_ANGULO:
-         datos["angulo_min"] = dato
-    elif char.uuid == UUID_ESTADO:
-        lbl_estado_sensor.configure(text=ESTADOS_SENSOR[dato])
-        state_sensor = dato
-    elif char.uuid == UUID_TIEMPO_ALTO:
-        lbl_tiempo_arriba_tiempo.configure(text="{:.3f}".format(dato))
-    elif char.uuid == UUID_TIEMPO_SUBIDA:
-        lbl_tiempo_subida_tiempo.configure(text="{:.3f}".format(dato))
+    elif char == UUID_MAX_ANGULO:
+        datos["angulo_max"] = dato
+    elif char == UUID_MIN_ANGULO:
+        datos["angulo_min"] = dato
+    elif char == UUID_PROMEDIO:
+        print("Angulo promedio recibido")
+        datos["angulo_prom"] = dato
+    elif char == UUID_ESTADO:
+        datos["state_sensor"] = dato
+        if dato == 4:
+            client.publish('maximo', datos["angulo_max"])
+            client.publish('promedio', datos["angulo_prom"])
+            client.publish('minimo', datos["angulo_min"])
+            client.publish('tiempo-subida', datos["t_subida"])
+            client.publish('tiempo-puntillas', datos["t_alto"])
+        # lbl_estado_sensor.configure(text=ESTADOS_SENSOR[dato])
+        # state_sensor = dato
+    elif char == UUID_TIEMPO_ALTO:
+        datos["t_alto"] = dato/10.0
+        # lbl_tiempo_arriba_tiempo.configure(text="{:.3f}".format(dato))
+    elif char == UUID_TIEMPO_SUBIDA:
+        datos["t_subida"] = dato/10.0
+        # lbl_tiempo_subida_tiempo.configure(text="{:.3f}".format(dato))
+
 
 
 def update_angulo(barra : customtkinter.CTkProgressBar, icono, label, dato, smooth=False):
@@ -143,6 +181,7 @@ def update_angulo(barra : customtkinter.CTkProgressBar, icono, label, dato, smoo
     if icono != None:
         icono.place_configure(anchor=CENTER, relx=0.5, y=(140-dato_smooth*240))
         icono.configure(fg_color=hsl_to_hex(dato, 72, 53))
+
 
 def button_event():
     global state
@@ -167,50 +206,82 @@ def button_event():
 def close_app():
     global app_running
     app_running = False
+    if npdp != None and npdp.is_open:
+        npdp.close()
 
 
-def process(delta):
+def process():
+    if not npdp.is_open:
+        icon_usb.place_forget()
+    else:
+        icon_usb.place_configure(anchor=NE, relx=(450-FRAME_PADDING/2)/450, y=FRAME_PADDING/2)
+
     update_angulo(bar_angulo, None, lbl_angulo, datos["angulo"], True)
-    update_angulo(bar_angulo_prom, icon_prom, lbl_angulo_prom, datos["angulo"], True)
+    update_angulo(bar_angulo_prom, icon_prom, lbl_angulo_prom, datos["angulo_prom"], True)
     update_angulo(bar_angulo_max, icon_max, lbl_angulo_max, datos["angulo_max"], True)
     update_angulo(bar_angulo_min, icon_min, lbl_angulo_min, datos["angulo_min"], True)
+
+    lbl_estado_sensor.configure(text=ESTADOS_SENSOR[datos["state_sensor"]])
+    lbl_tiempo_arriba_tiempo.configure(text="{:.3f}".format(datos["t_alto"]))
+    lbl_tiempo_subida_tiempo.configure(text="{:.3f}".format(datos["t_subida"]))
+
+
+
+def callback(uuid, dato):
+    # print("Callback")
+    # print(uuid)
+    # print(dato)
+    characteristic_callback(uuid, dato)
+
+
+def communication():
+    global npdp
+
+    if not app_running:
+        return
+
+    if not npdp.is_open:
+        npdp.open()
+        if npdp.is_open:
+            print("Connected")
+    else:
+        npdp.update()
+
+
+def communication_loop():
+    while app_running:
+        communication()
 
 
 async def main():
     global device_connected
     global bt_inicio_pressed
-    async with BleakClient(device_address) as client:
-        device_connected = True
-        service_movimiento = client.services.get_service(UUID_SERVICE)
-        characteristic_procesar = service_movimiento.get_characteristic(UUID_PROCESAR)
-        characteristic_max_angulo = service_movimiento.get_characteristic(UUID_MAX_ANGULO)
-        characteristic_min_angulo = service_movimiento.get_characteristic(UUID_MIN_ANGULO)
-        characteristic_angulo = service_movimiento.get_characteristic(UUID_ANGULO)
-        characteristic_estado = service_movimiento.get_characteristic(UUID_ESTADO)
-        characteristic_tiempo_subida = service_movimiento.get_characteristic(UUID_TIEMPO_SUBIDA)
-        characteristic_tiempo_alto = service_movimiento.get_characteristic(UUID_TIEMPO_ALTO)
-        await client.start_notify(characteristic_max_angulo, characteristic_callback)
-        await client.start_notify(characteristic_min_angulo, characteristic_callback)
-        await client.start_notify(characteristic_angulo, characteristic_callback)
-        await client.start_notify(characteristic_estado, characteristic_callback)
-        await client.start_notify(characteristic_tiempo_subida, characteristic_callback)
-        await client.start_notify(characteristic_tiempo_alto, characteristic_callback)
+    global thread_communication
 
-        while app_running:
-            process(1.0/FPS)
-            root.update()
+    thread_communication = threading.Thread(target=communication_loop)
+    thread_communication.start()
 
-            if bt_inicio_pressed:
-                if state == ST_IDLE and device_connected:
-                    await client.write_gatt_char(characteristic_procesar, FLAG_OFF, response=True)
-                    print("Parar")
-                elif device_connected:
-                    await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
-                    print("EMPEZAR")
-                bt_inicio_pressed = False
-            await asyncio.sleep(1.0/FPS)
+    while app_running:
+        process()
+        root.update()
 
+        if bt_inicio_pressed:
+            if state == ST_IDLE and npdp.is_open:
+                npdp.write(UUID_PROCESAR, FLAG_OFF)
+                # await client.write_gatt_char(characteristic_procesar, FLAG_OFF, response=True)
+                print("PARAR")
+            elif npdp.is_open:
+                npdp.write(UUID_PROCESAR, FLAG_ON)
+                # await client.write_gatt_char(characteristic_procesar, FLAG_ON, response=True)
+                print("EMPEZAR")
+            bt_inicio_pressed = False
+
+        # print(time.time())
+        # await asyncio.sleep(1.0/FPS)
+
+    thread_communication.join()
     root.destroy()
+    npdp.close()
     print("Finalizado")
 
 
@@ -324,6 +395,13 @@ lbl_estado_sensor = customtkinter.CTkLabel(master=root, text=ESTADOS_SENSOR[0], 
                                            font=font_estado, fg_color="transparent")
 lbl_estado_sensor.place_configure(anchor=N, relx=225.0*1.0/450, rely=30.0*1.0/800.0)
 
+image_usb = customtkinter.CTkImage(Image.open("icon_usb_white.png"), size=(24,24))
+icon_usb = customtkinter.CTkLabel(root, corner_radius=10, image=image_usb, text="",
+                                  fg_color="transparent")
+icon_usb.place_configure(anchor=NE, relx=(450-FRAME_PADDING/2)/450, y=FRAME_PADDING/2)
+
 customtkinter.deactivate_automatic_dpi_awareness()
+
+npdp = NPDPDevice(callback=callback)
 
 asyncio.run(main())

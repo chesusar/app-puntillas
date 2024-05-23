@@ -6,7 +6,7 @@ import time
 from Adafruit_IO import MQTTClient
 
 ADAFRUIT_IO_KEY = ''
-ADAFRUIT_IO_USERNAME = 'Rarribas'
+ADAFRUIT_IO_USERNAME= 'Rarribas'
 
 client = MQTTClient(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
 
