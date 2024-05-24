@@ -1,8 +1,6 @@
 <center>
   <h1>Dispositivo IoT de Monitoreo de Equilibrio y Movimiento</h1>
-  <iframe width="960" height="540" src="https://www.youtube.com/embed/7HGj-5P9A-U" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 </center>
-
 
 ## Descripción
 Este proyecto consiste en un dispositivo IoT diseñado para monitorear y analizar el equilibrio y los movimientos relacionados con mantenerse de puntillas. Utiliza un sensor IMU (Unidad de Medición Inercial) y un microcontrolador con Bluetooth para calcular diversas caracteristicas y enviar los datos a una aplicación de PC.
