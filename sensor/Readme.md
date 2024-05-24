@@ -2,6 +2,7 @@
 <div align="Center">
   <h1 align="Center">Dispositivo IoT de Monitoreo de Equilibrio y Movimiento - Sensor</h1>
   <p float="left">
+    <img src="https://i.imgur.com/qmJ6LUT.jpeg" width="411" height="312">
   </p>
 </div>
 
