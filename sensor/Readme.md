@@ -40,6 +40,10 @@ El código está desarrollado para el **Arduino Nano 33 BLE Sense** y se encarga
 ### Filtro de Kalman
 El filtro de Kalman se utiliza para combinar las lecturas del acelerómetro y el giroscopio, proporcionando estimaciones más precisas del ángulo, reduciendo el ruido y mejorando la estabilidad de las mediciones.
 
+<center>
+  <video src="https://github.com/chesusar/app-puntillas/assets/133507131/c614b8c2-d482-485f-80f9-662d0921a47c" width="226" height="416"/> 
+</center>
+
 ## Componentes
 ### Ubicación
 La información sobre los componentes se encuentra en la carpeta `componentes`.
