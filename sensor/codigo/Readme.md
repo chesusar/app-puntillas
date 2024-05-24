@@ -26,6 +26,6 @@ El filtro de Kalman se utiliza para fusionar las lecturas del acelerómetro y el
 ## Maquina de estados
 <div align="Center">
   <p float="left">
-    <img src="https://github.com/chesusar/app-puntillas/blob/serial/sensor/codigo/maquina%20de%20estados.png" width="437" height="347">
+    <img src="https://github.com/chesusar/app-puntillas/blob/main/sensor/codigo/maquina%20de%20estados.png" width="437" height="347">
   </p>
 </div>
