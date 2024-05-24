@@ -1,6 +1,7 @@
 <div align="Center">
   <h1>Dispositivo IoT de Monitoreo de Equilibrio y Movimiento</h1>
   <p float="left">
+    <img src="https://i.imgur.com/qmJ6LUT.jpeg" width="411" height="312">
     <img src="https://i.imgur.com/QgZnqLW.png" width="169" height="312">
   </p>
 </div>
